@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field_error, invalid, csrf_field %}
+{% set editing = service is not none %}
+{% block title %}{{ 'Edit ' ~ service.name if editing else 'New service' }}{% endblock %}
+{% block page_title %}{{ 'Edit service' if editing else 'New service' }}{% endblock %}
+{% block page_subtitle %}{{ service.name if editing else 'Register an application to monitor' }}{% endblock %}
+{% block content %}
+<div class="panel form-panel">
+  <form method="post" class="panel-body" novalidate>
+    {{ csrf_field() }}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="name" class="form-label">Service name <span class="text-danger">*</span></label>
+        <input id="name" name="name" class="form-control {{ invalid(errors, 'name') }}" value="{{ form.get('name') or '' }}" placeholder="payments-api" required>
+        {{ field_error(errors, 'name') }}
+        <div class="form-text">Must match the <code>service_name</code> Jenkins sends.</div>
+      </div>
+      <div class="col-md-6">
+        <label for="owner" class="form-label">Owner / team</label>
+        <input id="owner" name="owner" class="form-control" value="{{ form.get('owner') or '' }}" placeholder="platform-team">
+      </div>
+      <div class="col-12">
+        <label for="description" class="form-label">Description</label>
+        <textarea id="description" name="description" rows="3" class="form-control">{{ form.get('description') or '' }}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label for="repository_url" class="form-label">Repository URL</label>
+        <input id="repository_url" name="repository_url" type="url" class="form-control {{ invalid(errors, 'repository_url') }}" value="{{ form.get('repository_url') or '' }}" placeholder="https://github.com/org/repo">
+        {{ field_error(errors, 'repository_url') }}
+      </div>
+      <div class="col-md-6">
+        <label for="health_check_url" class="form-label">Health check URL</label>
+        <input id="health_check_url" name="health_check_url" type="url" class="form-control {{ invalid(errors, 'health_check_url') }}" value="{{ form.get('health_check_url') or '' }}" placeholder="http://demo-app:8080/health">
+        {{ field_error(errors, 'health_check_url') }}
+      </div>
+      <div class="col-md-6">
+        <label for="environment" class="form-label">Environment</label>
+        <select id="environment" name="environment" class="form-select {{ invalid(errors, 'environment') }}">
+          {% for env in ENVIRONMENTS %}<option value="{{ env }}" {% if (form.get('environment') or 'production') == env %}selected{% endif %}>{{ env|label }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'environment') }}
+      </div>
+      <div class="col-md-6">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select {{ invalid(errors, 'status') }}">
+          {% for st in SERVICE_STATUSES %}<option value="{{ st }}" {% if (form.get('status') or 'active') == st %}selected{% endif %}>{{ st|label }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'status') }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 justify-content-end mt-4">
+      <a href="{{ url_for('services.detail', service_id=service.id) if editing else url_for('services.list_services') }}" class="btn btn-outline-secondary">Cancel</a>
+      <button class="btn btn-primary"><i class="bi bi-check2"></i> {{ 'Save changes' if editing else 'Create service' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

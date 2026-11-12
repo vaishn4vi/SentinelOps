@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block title %}Deployment #{{ deployment.build_number }}{% endblock %}
+{% block page_title %}{{ deployment.service.name }} · build #{{ deployment.build_number }}{% endblock %}
+{% block page_subtitle %}Deployed {{ deployment.created_at|datetime }}{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('incidents.create', deployment_id=deployment.id, service_id=deployment.service_id) }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-flag"></i><span class="d-none d-sm-inline"> Report incident</span></a>
+  <a href="{{ url_for('main.deployments') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i><span class="d-none d-sm-inline"> Back</span></a>
+{% endblock %}
+{% block content %}
+<div class="status-hero status-hero-{{ deployment.status|badge }} mb-4">
+  <div class="status-hero-icon">
+    <i class="bi bi-{{ {'success':'check-circle-fill','failed':'x-circle-fill','rolled_back':'arrow-counterclockwise','in_progress':'hourglass-split'}[deployment.status] }}"></i>
+  </div>
+  <div>
+    <div class="status-hero-label">Deployment status</div>
+    <div class="status-hero-value">{{ deployment.status|label }}</div>
+  </div>
+  <div class="ms-auto text-end d-none d-sm-block">
+    <div class="status-hero-label">Duration</div>
+    <div class="status-hero-value">{{ deployment.duration_seconds|duration }}</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="panel mb-3">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-git"></i> Source &amp; build</h2></div>
+      <div class="panel-body">
+        <dl class="detail-grid">
+          <dt>Commit</dt><dd class="mono text-break">{{ deployment.commit_id }}</dd>
+          <dt>Author</dt><dd>{{ deployment.commit_author }}</dd>
+          <dt>Message</dt><dd class="text-break">{{ deployment.commit_message }}</dd>
+          <dt>Build number</dt><dd class="mono">#{{ deployment.build_number }}</dd>
+          <dt>Image tag</dt><dd class="mono text-break">{{ deployment.image_tag }}</dd>
+          <dt>Environment</dt><dd><span class="env-pill env-{{ deployment.environment }}">{{ deployment.environment }}</span></dd>
+          <dt>Triggered by</dt><dd>{{ deployment.triggered_by }}</dd>
+          <dt>Service</dt><dd><a href="{{ url_for('services.detail', service_id=deployment.service_id) }}">{{ deployment.service.name }}</a></dd>
+          {% if previous %}
+          <dt>Previous release</dt>
+          <dd><a href="{{ url_for('main.deployment_detail', deployment_id=previous.id) }}">#{{ previous.build_number }}</a> {{ status_badge(previous.status) }}</dd>
+          {% endif %}
+          {% if deployment.notes %}<dt>Notes</dt><dd class="text-break">{{ deployment.notes }}</dd>{% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-exclamation-octagon"></i> Linked incidents</h2></div>
+      {% if incidents %}
+      <ul class="list-unstyled incident-feed mb-0">
+        {% for i in incidents %}
+        <li><a href="{{ url_for('incidents.detail', incident_id=i.id) }}">
+          <span class="sev-dot sev-{{ i.severity }}"></span>
+          <div class="min-w-0"><div class="fw-medium text-truncate">{{ i.title }}</div><div class="small text-secondary">{{ i.severity|label }} · {{ i.created_at|timeago }}</div></div>
+          {{ status_badge(i.status) }}
+        </a></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <div class="panel-body text-secondary small">No incidents linked to this deployment.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-diagram-3"></i> Service timeline</h2></div>
+      <ul class="timeline">
+        {% for d in service_history %}
+        <li class="{% if d.id == deployment.id %}current{% endif %}">
+          <span class="timeline-dot bg-{{ d.status|badge }}"></span>
+          <a href="{{ url_for('main.deployment_detail', deployment_id=d.id) }}" class="d-flex justify-content-between gap-2">
+            <span><span class="mono">#{{ d.build_number }}</span> <span class="text-secondary small">{{ d.short_commit }}</span></span>
+            <span class="small text-secondary">{{ d.created_at|timeago }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

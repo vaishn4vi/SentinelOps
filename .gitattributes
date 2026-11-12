@@ -1,0 +1,7 @@
+# Keep Linux line endings for files that run inside containers,
+# even when the repository is cloned on Windows.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.ico binary

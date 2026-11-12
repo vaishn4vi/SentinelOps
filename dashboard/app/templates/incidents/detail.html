@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, confirm_delete, csrf_field %}
+{% block title %}Incident #{{ incident.id }}{% endblock %}
+{% block page_title %}Incident #{{ incident.id }}{% endblock %}
+{% block page_subtitle %}{{ incident.title }}{% endblock %}
+{% block page_actions %}
+  {% if incident.status != 'resolved' %}
+  <form method="post" action="{{ url_for('incidents.resolve', incident_id=incident.id) }}" class="d-inline">
+    {{ csrf_field() }}<button class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i><span class="d-none d-sm-inline"> Resolve</span></button>
+  </form>
+  {% endif %}
+  <a href="{{ url_for('incidents.edit', incident_id=incident.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i><span class="d-none d-sm-inline"> Edit</span></a>
+  {{ confirm_delete(url_for('incidents.delete', incident_id=incident.id), 'Delete', 'Delete this incident?') }}
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><span class="sev-dot sev-{{ incident.severity }}"></span> {{ incident.title }}</h2>
+        {{ status_badge(incident.status) }}
+      </div>
+      <div class="panel-body">
+        <pre class="incident-desc">{{ incident.description or 'No description provided.' }}</pre>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-info-circle"></i> Details</h2></div>
+      <div class="panel-body">
+        <dl class="detail-grid detail-grid-stacked">
+          <dt>Severity</dt><dd>{{ status_badge(incident.severity) }}</dd>
+          <dt>Status</dt><dd>{{ status_badge(incident.status) }}</dd>
+          <dt>Service</dt><dd>{% if incident.service %}<a href="{{ url_for('services.detail', service_id=incident.service_id) }}">{{ incident.service.name }}</a>{% else %}—{% endif %}</dd>
+          <dt>Deployment</dt><dd>{% if incident.deployment %}<a href="{{ url_for('main.deployment_detail', deployment_id=incident.deployment_id) }}">#{{ incident.deployment.build_number }}</a> {{ status_badge(incident.deployment.status) }}{% else %}—{% endif %}</dd>
+          <dt>Source</dt><dd>{{ 'Automatic (pipeline)' if incident.auto_generated else 'Manual' }}</dd>
+          <dt>Opened</dt><dd>{{ incident.created_at|datetime }}</dd>
+          <dt>Resolved</dt><dd>{{ incident.resolved_at|datetime }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

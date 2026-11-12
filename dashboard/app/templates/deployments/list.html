@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, pagination_nav, empty_state %}
+{% block title %}Deployments{% endblock %}
+{% block page_title %}Deployment history{% endblock %}
+{% block page_subtitle %}Every release recorded by the pipeline{% endblock %}
+{% block content %}
+<div class="panel">
+  <form class="filter-bar" method="get">
+    <div class="input-group input-group-sm filter-search">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input type="search" name="q" class="form-control" placeholder="Commit, author, message, image…" value="{{ filters.q }}">
+    </div>
+    <select name="service_id" class="form-select form-select-sm" aria-label="Service">
+      <option value="">All services</option>
+      {% for s in services %}<option value="{{ s.id }}" {% if filters.service_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+    <select name="status" class="form-select form-select-sm" aria-label="Status">
+      <option value="">All statuses</option>
+      {% for st in DEPLOYMENT_STATUSES %}<option value="{{ st }}" {% if filters.status == st %}selected{% endif %}>{{ st|label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+    {% if filters.q or filters.status or filters.service_id %}<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.deployments') }}">Reset</a>{% endif %}
+  </form>
+
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table table-dark-ops align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Build</th><th>Service</th><th>Commit</th><th class="d-none d-lg-table-cell">Author</th>
+          <th class="d-none d-xl-table-cell">Image</th><th class="d-none d-md-table-cell">Env</th>
+          <th>Status</th><th class="d-none d-md-table-cell">Duration</th><th class="text-end">Deployed</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for d in pagination.items %}
+        <tr class="row-link" data-href="{{ url_for('main.deployment_detail', deployment_id=d.id) }}">
+          <td class="mono"><a href="{{ url_for('main.deployment_detail', deployment_id=d.id) }}">#{{ d.build_number }}</a></td>
+          <td>{{ d.service.name }}</td>
+          <td><span class="mono text-info">{{ d.short_commit }}</span><div class="small text-secondary text-truncate cell-msg">{{ d.commit_message }}</div></td>
+          <td class="d-none d-lg-table-cell">{{ d.commit_author }}</td>
+          <td class="d-none d-xl-table-cell mono small text-truncate cell-msg">{{ d.image_tag }}</td>
+          <td class="d-none d-md-table-cell"><span class="env-pill env-{{ d.environment }}">{{ d.environment }}</span></td>
+          <td>{{ status_badge(d.status) }}</td>
+          <td class="d-none d-md-table-cell small">{{ d.duration_seconds|duration }}</td>
+          <td class="text-end small text-secondary" title="{{ d.created_at|datetime }}">{{ d.created_at|timeago }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pagination_nav(pagination, 'main.deployments') }}
+  {% else %}
+    {% call empty_state('search', 'No deployments found', 'Try adjusting the filters, or trigger a pipeline run.') %}{% endcall %}
+  {% endif %}
+</div>
+{% endblock %}

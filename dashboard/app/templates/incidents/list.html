@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, pagination_nav, empty_state, confirm_delete, csrf_field %}
+{% block title %}Incidents{% endblock %}
+{% block page_title %}Incidents{% endblock %}
+{% block page_subtitle %}Failures, rollbacks and operational issues{% endblock %}
+{% block page_actions %}
+  <a href="{{ url_for('incidents.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i><span class="d-none d-sm-inline"> New incident</span></a>
+{% endblock %}
+{% block content %}
+<div class="status-tabs mb-3">
+  <a href="{{ url_for('incidents.list_incidents', severity=filters.severity or None) }}" class="{% if not filters.status %}active{% endif %}">All</a>
+  {% for st in INCIDENT_STATUSES %}
+  <a href="{{ url_for('incidents.list_incidents', status=st, severity=filters.severity or None) }}" class="{% if filters.status == st %}active{% endif %}">{{ st|label }} <span class="count">{{ counts[st] }}</span></a>
+  {% endfor %}
+</div>
+<div class="panel">
+  <form class="filter-bar" method="get">
+    {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+    <select name="severity" class="form-select form-select-sm" aria-label="Severity">
+      <option value="">All severities</option>
+      {% for sv in INCIDENT_SEVERITIES %}<option value="{{ sv }}" {% if filters.severity == sv %}selected{% endif %}>{{ sv|label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+  </form>
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table table-dark-ops align-middle mb-0">
+      <thead><tr><th>Incident</th><th class="d-none d-md-table-cell">Service</th><th>Severity</th><th>Status</th><th class="d-none d-lg-table-cell">Opened</th><th class="text-end">Actions</th></tr></thead>
+      <tbody>
+      {% for i in pagination.items %}
+        <tr>
+          <td class="min-w-0">
+            <a href="{{ url_for('incidents.detail', incident_id=i.id) }}" class="fw-medium">{{ i.title }}</a>
+            {% if i.auto_generated %}<span class="badge badge-soft-secondary ms-1" title="Created automatically from a failed deployment"><i class="bi bi-robot"></i> auto</span>{% endif %}
+          </td>
+          <td class="d-none d-md-table-cell">{{ i.service.name if i.service else '—' }}</td>
+          <td><span class="sev-dot sev-{{ i.severity }}"></span> {{ i.severity|label }}</td>
+          <td>{{ status_badge(i.status) }}</td>
+          <td class="d-none d-lg-table-cell small text-secondary">{{ i.created_at|timeago }}</td>
+          <td class="text-end text-nowrap">
+            {% if i.status != 'resolved' %}
+            <form method="post" action="{{ url_for('incidents.resolve', incident_id=i.id) }}" class="d-inline">
+              {{ csrf_field() }}<button class="btn btn-outline-success btn-sm" title="Resolve"><i class="bi bi-check2"></i></button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('incidents.edit', incident_id=i.id) }}" class="btn btn-outline-secondary btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+            {{ confirm_delete(url_for('incidents.delete', incident_id=i.id), '', 'Delete this incident?') }}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pagination_nav(pagination, 'incidents.list_incidents') }}
+  {% else %}
+    {% call empty_state('emoji-sunglasses', 'No incidents', 'Nothing matches these filters.') %}{% endcall %}
+  {% endif %}
+</div>
+{% endblock %}

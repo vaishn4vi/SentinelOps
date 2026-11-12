@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, confirm_delete, csrf_field %}
+{% block title %}{{ service.name }}{% endblock %}
+{% block page_title %}{{ service.name }}{% endblock %}
+{% block page_subtitle %}{{ service.description or 'Service details' }}{% endblock %}
+{% block page_actions %}
+  {% if service.health_check_url %}
+  <form method="post" action="{{ url_for('services.health_check', service_id=service.id) }}" class="d-inline">
+    {{ csrf_field() }}
+    <button class="btn btn-outline-info btn-sm"><i class="bi bi-heart-pulse"></i><span class="d-none d-sm-inline"> Run health check</span></button>
+  </form>
+  {% endif %}
+  <a href="{{ url_for('services.edit', service_id=service.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i><span class="d-none d-sm-inline"> Edit</span></a>
+  {{ confirm_delete(url_for('services.delete', service_id=service.id), 'Delete', 'Delete service ' ~ service.name ~ ' and ALL of its deployments and incidents?') }}
+{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for label, value, tone in [
+      ('Deployments', summary.total_deployments, 'primary'),
+      ('Successful', summary.successful_deployments, 'success'),
+      ('Failed', summary.failed_deployments, 'danger'),
+      ('Rollbacks', summary.rollback_count, 'warning'),
+      ('Success rate', '%.1f%%'|format(summary.success_percentage), 'info')] %}
+  <div class="col-6 col-md">
+    <div class="kpi-card kpi-{{ tone }} kpi-compact"><div class="kpi-label">{{ label }}</div><div class="kpi-value">{{ value }}</div></div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-4">
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-info-circle"></i> Configuration</h2></div>
+      <div class="panel-body">
+        <dl class="detail-grid detail-grid-stacked">
+          <dt>Status</dt><dd>{{ status_badge(service.status) }}</dd>
+          <dt>Environment</dt><dd><span class="env-pill env-{{ service.environment }}">{{ service.environment }}</span></dd>
+          <dt>Owner</dt><dd>{{ service.owner or '—' }}</dd>
+          <dt>Repository</dt><dd class="text-break">{% if service.repository_url %}<a href="{{ service.repository_url }}" target="_blank" rel="noopener">{{ service.repository_url }}</a>{% else %}—{% endif %}</dd>
+          <dt>Health URL</dt><dd class="mono small text-break">{{ service.health_check_url or '—' }}</dd>
+          <dt>Last health check</dt>
+          <dd>{% if service.last_health_status %}{{ status_badge(service.last_health_status) }} <span class="small text-secondary">{{ service.last_health_check_at|timeago }}</span>{% else %}Never{% endif %}</dd>
+          <dt>Created</dt><dd>{{ service.created_at|datetime }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-8">
+    <div class="panel mb-3">
+      <div class="panel-header">
+        <h2 class="panel-title"><i class="bi bi-rocket-takeoff"></i> Recent deployments</h2>
+        <a href="{{ url_for('main.deployments', service_id=service.id) }}" class="btn btn-link btn-sm">All</a>
+      </div>
+      {% if deployments %}
+      <div class="table-responsive">
+        <table class="table table-dark-ops align-middle mb-0">
+          <thead><tr><th>Build</th><th>Commit</th><th class="d-none d-md-table-cell">Author</th><th>Status</th><th class="text-end">When</th></tr></thead>
+          <tbody>
+          {% for d in deployments %}
+            <tr class="row-link" data-href="{{ url_for('main.deployment_detail', deployment_id=d.id) }}">
+              <td class="mono">#{{ d.build_number }}</td>
+              <td><span class="mono text-info">{{ d.short_commit }}</span></td>
+              <td class="d-none d-md-table-cell">{{ d.commit_author }}</td>
+              <td>{{ status_badge(d.status) }}</td>
+              <td class="text-end small text-secondary">{{ d.created_at|timeago }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="panel-body text-secondary small">No deployments recorded for this service.</div>{% endif %}
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><i class="bi bi-exclamation-octagon"></i> Incidents</h2>
+        <a href="{{ url_for('incidents.create', service_id=service.id) }}" class="btn btn-link btn-sm">Report</a>
+      </div>
+      {% if incidents %}
+      <ul class="list-unstyled incident-feed mb-0">
+        {% for i in incidents %}
+        <li><a href="{{ url_for('incidents.detail', incident_id=i.id) }}">
+          <span class="sev-dot sev-{{ i.severity }}"></span>
+          <div class="min-w-0"><div class="fw-medium text-truncate">{{ i.title }}</div><div class="small text-secondary">{{ i.severity|label }} · {{ i.created_at|timeago }}</div></div>
+          {{ status_badge(i.status) }}
+        </a></li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="panel-body text-secondary small">No incidents for this service.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, empty_state %}
+{% block title %}Overview{% endblock %}
+{% block page_title %}Deployment overview{% endblock %}
+{% block page_subtitle %}Live health of your delivery pipeline{% endblock %}
+{% block page_actions %}
+  <button class="btn btn-outline-secondary btn-sm" id="refreshCharts" type="button"><i class="bi bi-arrow-clockwise"></i><span class="d-none d-sm-inline"> Refresh</span></button>
+{% endblock %}
+{% block content %}
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  {% set kpis = [
+    ('Total deployments', stats.total_deployments, 'rocket-takeoff', 'primary', stats.in_progress_deployments ~ ' in progress'),
+    ('Successful', stats.successful_deployments, 'check2-circle', 'success', 'Healthy releases'),
+    ('Failed', stats.failed_deployments, 'x-octagon', 'danger', 'Broken builds / deploys'),
+    ('Rollbacks', stats.rollback_count, 'arrow-counterclockwise', 'warning', 'Auto / manual reverts'),
+  ] %}
+  {% for label, value, icon, tone, hint in kpis %}
+  <div class="col-6 col-xl">
+    <div class="kpi-card kpi-{{ tone }}">
+      <div class="kpi-icon"><i class="bi bi-{{ icon }}"></i></div>
+      <div class="kpi-label">{{ label }}</div>
+      <div class="kpi-value" data-kpi="{{ label }}">{{ value }}</div>
+      <div class="kpi-hint">{{ hint }}</div>
+    </div>
+  </div>
+  {% endfor %}
+  <div class="col-12 col-xl">
+    <div class="kpi-card kpi-info">
+      <div class="kpi-icon"><i class="bi bi-speedometer2"></i></div>
+      <div class="kpi-label">Success rate</div>
+      <div class="kpi-value">{{ '%.1f'|format(stats.success_percentage) }}<span class="kpi-unit">%</span></div>
+      <div class="progress progress-thin mt-2" role="progressbar" aria-valuenow="{{ stats.success_percentage }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar {% if stats.success_percentage >= 90 %}bg-success{% elif stats.success_percentage >= 70 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ stats.success_percentage }}%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-8">
+    <div class="panel h-100">
+      <div class="panel-header">
+        <h2 class="panel-title"><i class="bi bi-bar-chart-line"></i> Deployments · last 14 days</h2>
+      </div>
+      <div class="panel-body chart-box chart-lg"><canvas id="trendChart" aria-label="Deployment trend chart" role="img"></canvas></div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="panel h-100">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-pie-chart"></i> Status distribution</h2></div>
+      <div class="panel-body chart-box"><canvas id="statusChart" aria-label="Deployment status chart" role="img"></canvas></div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6 col-xl-12">
+    <div class="panel h-100">
+      <div class="panel-header"><h2 class="panel-title"><i class="bi bi-hdd-stack"></i> Deployments by service</h2></div>
+      <div class="panel-body chart-box"><canvas id="serviceChart" aria-label="Deployments per service chart" role="img"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-8">
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><i class="bi bi-clock-history"></i> Recent deployments</h2>
+        <a href="{{ url_for('main.deployments') }}" class="btn btn-link btn-sm">View all</a>
+      </div>
+      {% if recent %}
+      <div class="table-responsive">
+        <table class="table table-dark-ops align-middle mb-0">
+          <thead><tr><th>Build</th><th>Service</th><th class="d-none d-md-table-cell">Commit</th><th>Status</th><th class="text-end">When</th></tr></thead>
+          <tbody>
+          {% for d in recent %}
+            <tr class="row-link" data-href="{{ url_for('main.deployment_detail', deployment_id=d.id) }}">
+              <td class="mono">#{{ d.build_number }}</td>
+              <td>{{ d.service.name }}</td>
+              <td class="d-none d-md-table-cell"><span class="mono text-info">{{ d.short_commit }}</span> <span class="text-secondary text-truncate-inline">{{ d.commit_message|truncate(40) }}</span></td>
+              <td>{{ status_badge(d.status) }}</td>
+              <td class="text-end text-secondary small" title="{{ d.created_at|datetime }}">{{ d.created_at|timeago }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        {% call empty_state('rocket', 'No deployments yet', 'Send your first deployment from Jenkins to POST /api/deployments.') %}{% endcall %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><i class="bi bi-exclamation-octagon"></i> Open incidents <span class="badge bg-danger-subtle text-danger-emphasis ms-1">{{ stats.open_incidents }}</span></h2>
+        <a href="{{ url_for('incidents.list_incidents', status='open') }}" class="btn btn-link btn-sm">All</a>
+      </div>
+      {% if open_incidents %}
+      <ul class="list-unstyled incident-feed mb-0">
+        {% for i in open_incidents %}
+        <li>
+          <a href="{{ url_for('incidents.detail', incident_id=i.id) }}">
+            <span class="sev-dot sev-{{ i.severity }}"></span>
+            <div class="min-w-0">
+              <div class="fw-medium text-truncate">{{ i.title }}</div>
+              <div class="small text-secondary">{{ i.service.name if i.service else 'Unassigned' }} · {{ i.created_at|timeago }}</div>
+            </div>
+            {{ status_badge(i.status) }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        {% call empty_state('emoji-sunglasses', 'All clear', 'No open incidents. Systems nominal.') %}{% endcall %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}" data-endpoint="{{ url_for('main.chart_data') }}" id="dashboardScript"></script>
+{% endblock %}

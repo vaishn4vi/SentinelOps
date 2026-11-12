@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field_error, invalid, csrf_field %}
+{% set editing = incident is not none %}
+{% block title %}{{ 'Edit incident' if editing else 'New incident' }}{% endblock %}
+{% block page_title %}{{ 'Edit incident #' ~ incident.id if editing else 'Report incident' }}{% endblock %}
+{% block page_subtitle %}Track an operational issue{% endblock %}
+{% block content %}
+<div class="panel form-panel">
+  <form method="post" class="panel-body" novalidate>
+    {{ csrf_field() }}
+    <div class="row g-3">
+      <div class="col-12">
+        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+        <input id="title" name="title" class="form-control {{ invalid(errors, 'title') }}" value="{{ form.get('title') or '' }}" required maxlength="200" placeholder="Checkout latency spike after release #142">
+        {{ field_error(errors, 'title') }}
+      </div>
+      <div class="col-12">
+        <label for="description" class="form-label">Description</label>
+        <textarea id="description" name="description" rows="5" class="form-control">{{ form.get('description') or '' }}</textarea>
+      </div>
+      <div class="col-md-6">
+        <label for="severity" class="form-label">Severity</label>
+        <select id="severity" name="severity" class="form-select {{ invalid(errors, 'severity') }}">
+          {% for sv in INCIDENT_SEVERITIES %}<option value="{{ sv }}" {% if (form.get('severity') or 'medium') == sv %}selected{% endif %}>{{ sv|label }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'severity') }}
+      </div>
+      <div class="col-md-6">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select {{ invalid(errors, 'status') }}">
+          {% for st in INCIDENT_STATUSES %}<option value="{{ st }}" {% if (form.get('status') or 'open') == st %}selected{% endif %}>{{ st|label }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'status') }}
+      </div>
+      <div class="col-md-6">
+        <label for="service_id" class="form-label">Service</label>
+        <select id="service_id" name="service_id" class="form-select {{ invalid(errors, 'service_id') }}">
+          <option value="">— None —</option>
+          {% for s in services %}<option value="{{ s.id }}" {% if (form.get('service_id') or '')|string == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'service_id') }}
+      </div>
+      <div class="col-md-6">
+        <label for="deployment_id" class="form-label">Related deployment</label>
+        <select id="deployment_id" name="deployment_id" class="form-select {{ invalid(errors, 'deployment_id') }}">
+          <option value="">— None —</option>
+          {% for d in deployments %}<option value="{{ d.id }}" {% if (form.get('deployment_id') or '')|string == d.id|string %}selected{% endif %}>{{ d.service.name }} #{{ d.build_number }} ({{ d.status|label }})</option>{% endfor %}
+        </select>
+        {{ field_error(errors, 'deployment_id') }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 justify-content-end mt-4">
+      <a href="{{ url_for('incidents.detail', incident_id=incident.id) if editing else url_for('incidents.list_incidents') }}" class="btn btn-outline-secondary">Cancel</a>
+      <button class="btn btn-primary"><i class="bi bi-check2"></i> {{ 'Save changes' if editing else 'Create incident' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

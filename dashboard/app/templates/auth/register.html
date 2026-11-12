@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field_error, invalid %}
+{% block title %}Create account{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block auth_content %}
+<div class="auth-card">
+  <div class="auth-brand">
+    <span class="brand-icon"><i class="bi bi-shield-shaded"></i></span>
+    <span>Sentinel<strong>Ops</strong></span>
+  </div>
+  <h2 class="h5 mb-1">Create your account</h2>
+  <p class="text-secondary small mb-4">Join the operations console.</p>
+  {% include "_flash.html" %}
+  <form method="post" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control {{ invalid(errors, 'username') }}" id="username" name="username" value="{{ form.get('username', '') }}" required autocomplete="username">
+      {{ field_error(errors, 'username') }}
+    </div>
+    <div class="mb-3">
+      <label for="email" class="form-label">Email</label>
+      <input type="email" class="form-control {{ invalid(errors, 'email') }}" id="email" name="email" value="{{ form.get('email', '') }}" required autocomplete="email">
+      {{ field_error(errors, 'email') }}
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-sm-6">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control {{ invalid(errors, 'password') }}" id="password" name="password" required autocomplete="new-password">
+        {{ field_error(errors, 'password') }}
+      </div>
+      <div class="col-sm-6">
+        <label for="confirm_password" class="form-label">Confirm</label>
+        <input type="password" class="form-control {{ invalid(errors, 'confirm_password') }}" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+        {{ field_error(errors, 'confirm_password') }}
+      </div>
+      <div class="form-text mt-1">At least 8 characters, with letters and numbers.</div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-person-plus"></i> Create account</button>
+  </form>
+  <p class="text-center small text-secondary mt-4 mb-0">Already registered? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}
